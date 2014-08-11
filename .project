@@ -14,4 +14,11 @@
 	<natures>
 		<nature>org.python.pydev.pythonNature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>switch_service.py</name>
+			<type>1</type>
+			<location>/home/piotro/MyDisk/MyBusiness/AnthillTechnology/Software/RasPi-Demo1/PyDevWorkspace/fi24_raspi_demo1/switch_service.py</location>
+		</link>
+	</linkedResources>
 </projectDescription>
