@@ -1,10 +1,22 @@
+'''
+Created on Aug 12, 2014
+
+@author: Piotr Orzechowski
+@copyright: Anthill Technology
+@license: GPL
+@version: 0.1
+@note: Early beta version
+@todo: read RasPi GPIO pins to use from the command line (now they are hardcoded)
+@todo: remove excessive debug prints
+'''
+
 import sys
 import os
 from mewa.client import Connection
-from mewa.client import Protocol
 import time
-import json
 import threading
+
+from globalids import *
 
 
 
@@ -16,103 +28,129 @@ except RuntimeError:
 
 
 
-DEVICE_NAME = "RasPi Light Switch"
+DEVICE_NAME_PREFIX = "RasPi_Light_Switch"
 '''Name, which the device uses to connect to the channel'''
-SERVICE_NAME_PREFIX = "GPIO-" 
-'''Prefix for naming the services exposed by this device''' 
-SWITCH_SERVICE_URI = "com.followit24.service.switch"
-'''URI of the service '''
 PINS_TO_READ = [15,16]
 '''List of pin numbers of RasPi's port P1 to watch'''
 
 
-
-g_Connection = Connection("ws://channels.followit24.com/ws")
-g_MyServices = {}
+g_MyDevices = []
 
 
 
-class SwitchService(threading.Thread):
+class SwitchDevice(threading.Thread):
     
    
     mPinNo = -1
     '''Stores the number of RasPi's GPIO pin to watch'''
-    mServiceName = "" 
-    '''Stores the service name (the name of the service instance)'''
+    mDeviceName = "" 
+    '''Stores the device name (the name of the service instance)'''
+    mConnection = Connection
+    '''Connection object representing channel API'''
+    
    
-    def __init__(self, service_name, pin_no):
-        super(SwitchService,self).__init__()
+    def __init__(self, device_name, pin_no, fq_channel_name, channel_pwd):
+        super(SwitchDevice,self).__init__()
 
         self.mPinNo = pin_no
-        self.mServiceName = service_name
+        self.mDeviceName = device_name
         
+        #
+        # Set up the RasPi inputs
+        #        
         GPIO.cleanup(pin_no)
         GPIO.setup(pin_no, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) 
+        
+        #
+        # Instantiate connection object
+        #
+        self.mConnection = Connection("ws://channels.followit24.com/ws")
+        #
+        # Set-up callback functions
+        #
+        self.mConnection.onConnected = self.onConnected
+        self.mConnection.onDeviceJoinedChannel = self.onDeviceJoined
+        self.mConnection.onDeviceLeftChannel = self.onDeviceLeftChannel
+        self.mConnection.onDevicesEvent = self.onDevicesEvent
+        self.mConnection.onError = self.onError
+        self.mConnection.onEvent = self.onEvent
+        self.mConnection.onMessage = self.onMessage
+        #
+        # Open connection to channel server
+        #
+        self.mConnection.connect(fq_channel_name, device_name, channel_pwd)
 
+   
    
     
     def run(self):
-        print "%s started - service %s, pin %s \n" % (self.getName(),self.mServiceName,self.mPinNo)
+        print "%s started - device %s, pin %s \n" % (self.getName(),self.mDeviceName,self.mPinNo)
+        
         while True:
             GPIO.wait_for_edge(self.mPinNo, GPIO.BOTH)
             time.sleep(0.05)
             if GPIO.input(self.mPinNo):
-                ev_id = "%s.%s" % (self.getServiceName(),"SwitchOn")
+                ev_id = URI_SWITCH_EV_SWITCHON
             else:
-                ev_id = "%s.%s" % (self.getServiceName(),"SwitchOff")
+                ev_id = URI_SWITCH_EV_SWITCHOFF
             print "Sending event: ", ev_id
-            g_Connection.sendEvent(ev_id, "")
+            self.mConnection.sendEvent(ev_id, "")
+            time.sleep(1)
         
-                
+    def getDeviceName(self):
+        return self.mDeviceName
         
-    def getServiceName(self):
-        return self.mServiceName
+    def getServiceTypes(self):
+        return [URI_DISCOVERY,URI_SWITCH]
+    
+    '''API channel callbacks'''
+    
+    def onConnected (self):
+        print "%s: Connected to channel" % (self.getDeviceName())
+        pass
         
-    def getServiceURI(self):
-        return SWITCH_SERVICE_URI
+    def onDeviceJoined (self, dev_name):
+        print "onDeviceJoined:",dev_name
     
-       
+    def onDeviceLeftChannel (self, dev_name):
+        print "onDeviceLeftChannel:",dev_name
+    
+    def onDevicesEvent (self, devices_list):
+        print "onDevicesEvent:",devices_list
+    
+    def onError (self, reason):
+        print "onError:",reason
         
+    def onEvent (self, from_device, eventId, params):
+        print "onEvent", from_device, eventId, params
         
-
-
-def onConnected():
-    print "onConnected: connected to channel successfully..."
-    
-def onDeviceJoined (dev_name):
-    print "onDeviceJoined:",dev_name
-
-def onDeviceLeftChannel (dev_name):
-    print "onDeviceLeftChannel:",dev_name
-
-def onDevicesEvent (devices_list):
-    print "onDevicesEvent:",devices_list
-
-def onError (reason):
-    print "onError:",reason
-    
-def onEvent (from_device, eventId, params):
-    print "onEvent", from_device, eventId, params
-    
-    
-def onMessage (from_device, msgId, params):
-    print "onMessage:", from_device, msgId, params
-    #
-    # Intercept calls to mandatory service com.followit24.service.discovery  
-    #
-    if  "discovery.GetServices" == msgId.strip():
-        try:
-            slist = []
-            for sname in  g_MyServices.iterkeys():
-                slist.append({"name":sname,"type":g_MyServices[sname]})
-            print "Sending: %s, %s, %s" % (from_device,"discovery.ServiceList",slist) 
-            g_Connection.sendMessage(from_device,"discovery.ServiceList",slist)
+    def onMessage (self, from_device, msgId, params):
+        print "%s.onMessage: from=%s, msgId=%s" % (self.getDeviceName(), from_device, msgId)
+        #
+        # Intercept calls to mandatory service com.followit24.service.discovery  
+        #
+        if  msgId == URI_DISCOVERY_GETSERVICES:
+            try:
+                print "Sending: %s, %s, %s" % (from_device,URI_DISCOVERY_SERVICELIST,self.getServiceTypes()) 
+                self.mConnection.sendMessage(from_device,URI_DISCOVERY_SERVICELIST,self.getServiceTypes())
+             
+            except Exception, e:
+                print "Exception", e
         
-        except Exception, e:
-            print "Exception", e
-    
-    
-
+            pass
+        elif  msgId == URI_SWITCH_GETSTATE:
+            try:
+                if GPIO.input(self.mPinNo):
+                    curstate="on"
+                else:
+                    curstate="off"
+                print "Sending: %s, %s, %s" % (from_device,URI_SWITCH_CURSTATE,curstate) 
+                self.mConnection.sendMessage(from_device,URI_SWITCH_CURSTATE,curstate)
+             
+            except Exception, e:
+                print "Exception", e
+        
+            pass
 
 def main():
     if len(sys.argv) != 3:
@@ -129,35 +167,15 @@ def main():
        
   
     #
-    # Start a few switch services, each monitoring different 
+    # Start a few switch devices, each monitoring one input on RasPi 
     # 
     for i in PINS_TO_READ:
-        sname = "%s%s" % (SERVICE_NAME_PREFIX,i)
-        sthread = SwitchService(sname, i)
-        g_MyServices[sname] = sthread.getServiceURI()
+        devname = "%s%s" % (DEVICE_NAME_PREFIX,i)
+        sthread = SwitchDevice(devname, i, channel_name, channel_password)
         sthread.start()
-  
-  
-               
-    #
-    # Set-up callback functions
-    #
+          
+
     
-    g_Connection.onConnected = onConnected
-    g_Connection.onDeviceJoinedChannel = onDeviceJoined
-    g_Connection.onDeviceLeftChannel = onDeviceLeftChannel
-    g_Connection.onDevicesEvent = onDevicesEvent
-    g_Connection.onError = onError
-    g_Connection.onEvent = onEvent
-    g_Connection.onMessage = onMessage
-   
-    #
-    # Connect to channel
-    #     Note that the connect method of the g_Connection object starts its own thread   
-    #     which executes until the g_Connection is closed
-    #     Therefore main function may terminate immediately  
-    g_Connection.connect(channel_name, DEVICE_NAME, channel_password)                
-      
 
 
 if __name__ == "__main__":
