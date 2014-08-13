@@ -178,7 +178,7 @@ def main():
         opts,args = getopt.getopt(sys.argv[1:],"c:p:i:")
         
     except getopt.GetoptError:
-        print ("\nUsage: %s -c <channel_name> -p <channel_password> -i <pin_number>  { -i <pin_number> }   \n" % (os.path.basename(sys.argv[0])))
+        print ("\nUsage: python %s -c <channel_name> -p <channel_password> -i <pin_number>  { -i <pin_number> }   \n" % (os.path.basename(sys.argv[0])))
         print ("       channel_name ::= string")
         print ("               fully qualified channel name\n")
         print ("       channel_password ::= string")
