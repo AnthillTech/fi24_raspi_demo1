@@ -1,14 +1,14 @@
 '''
 Created on Aug 12, 2014
 
-@summary: This module fully implements a simple functionality of a switch device. Depending on the command line parameters
-it creates one or more virtual devices, each monitoring the state of a single GPIO pin in Raspberry Pi. 
+@summary: This module fully implements a simple functionality of a light device. Depending on the command line parameters
+it creates one or more virtual devices, each controlling the state of a single GPIO pin in Raspberry Pi. 
 @author: Piotr Orzechowski
 @copyright: Anthill Technology
 @license: GPL
-@version: 0.2
+@version: 0.1
 @note: Early beta version
-@todo: remove excessive debug prints
+
 '''
 
 import sys
@@ -31,11 +31,11 @@ except RuntimeError:
 
 
 
-DEVICE_NAME_PREFIX = "RasPi_Switch-"
+DEVICE_NAME_PREFIX = "RasPi_Light-"
 '''Name, which the device uses to connect to the channel'''
 
 g_PinsToControl = []
-'''List of pin numbers of RasPi's port P1 to watch'''
+'''List of pin numbers of RasPi's port P1 to control'''
 
 
 g_MyDevices = []
@@ -68,7 +68,7 @@ class SwitchDevice(threading.Thread):
         # Set up the RasPi inputs
         #        
         #GPIO.cleanup(pin_no)
-        GPIO.setup(pin_no, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) 
+        GPIO.setup(pin_no, GPIO.OUT) 
         
         #
         # Instantiate connection object
@@ -94,24 +94,17 @@ class SwitchDevice(threading.Thread):
    
     
     def run(self):
-        print "%s started - device %s, pin %s \n" % (self.getName(),self.mDeviceName,self.mPinNo)
+        print "%s started - using pin #%s \n" % (self.mDeviceName,self.mPinNo)
         
         while True:
-            GPIO.wait_for_edge(self.mPinNo, GPIO.BOTH)
-            time.sleep(0.025)
-            if GPIO.input(self.mPinNo):
-                ev_id = URI_SWITCH_EV_SWITCHON
-            else:
-                ev_id = URI_SWITCH_EV_SWITCHOFF
-            print "Sending event: ", ev_id
-            self.mConnection.sendEvent(ev_id, "")
+            time.sleep(1)
         
         
     def getDeviceName(self):
         return self.mDeviceName
         
     def getServiceTypes(self):
-        return [URI_DISCOVERY,URI_SWITCH]
+        return [URI_DISCOVERY,URI_LIGHT]
     
     '''API channel callbacks'''
     
@@ -136,34 +129,42 @@ class SwitchDevice(threading.Thread):
         
     def onEvent (self, from_device, eventId, params):
         print "%s.onEvent: from=%s, msgId=%s" % (self.getDeviceName(), from_device, eventId)
+        if eventId == URI_SWITCH_EV_SWITCHON:
+            GPIO.output(self.mPinNo, not GPIO.input(self.mPinNo))
+    
         
     def onMessage (self, from_device, msgId, params):
         print "%s.onMessage: from=%s, msgId=%s" % (self.getDeviceName(), from_device, msgId)
-        #
-        # Intercept calls to mandatory service com.followit24.service.discovery  
-        #
-        if  msgId == URI_DISCOVERY_GETSERVICES:
-            try:
+        try:
+        
+            if  msgId == URI_DISCOVERY_GETSERVICES:
+            
                 print "Sending: %s, %s, %s" % (from_device,URI_DISCOVERY_SERVICELIST,self.getServiceTypes()) 
                 self.mConnection.sendMessage(from_device,URI_DISCOVERY_SERVICELIST,self.getServiceTypes())
-             
-            except Exception, e:
-                print "Exception", e
-        
-            pass
-        elif  msgId == URI_SWITCH_GETSTATE:
-            try:
+  
+            
+            elif  msgId == URI_LIGHT_CMD_GETSTATE:
                 if GPIO.input(self.mPinNo):
                     curstate="on"
                 else:
                     curstate="off"
-                print "Sending: %s, %s, %s" % (from_device,URI_SWITCH_CURSTATE,{"state":curstate}) 
-                self.mConnection.sendMessage(from_device,URI_SWITCH_CURSTATE,{"state":curstate})
-             
-            except Exception, e:
-                print "Exception", e
-        
-            pass
+                
+                print "Sending: %s, %s, %s" % (from_device,URI_LIGHT_RSP_CURSTATE,{"state":curstate}) 
+                self.mConnection.sendMessage(from_device,URI_LIGHT_RSP_CURSTATE,{"state":curstate})
+            
+            elif  msgId == URI_LIGHT_CMD_ON:
+                GPIO.output(self.mPinNo,1)
+            
+            elif  msgId == URI_LIGHT_CMD_OFF:
+                GPIO.output(self.mPinNo,0)
+
+            elif  msgId == URI_LIGHT_CMD_TOGGLE:
+                GPIO.output(self.mPinNo,GPIO.input(self.mPinNo))
+
+            
+        except Exception, e:
+            print "Exception", e
+    
 
 def main():
        
@@ -175,17 +176,17 @@ def main():
     
     try:
         
-        opts,args = getopt.getopt(sys.argv[1:],"c:p:i:")
+        opts,args = getopt.getopt(sys.argv[1:],"c:p:o:")
         
     except getopt.GetoptError:
-        print ("\nUsage: %s -c <channel_name> -p <channel_password> -i <pin_number>  { -i <pin_number> }   \n" % (os.path.basename(sys.argv[0])))
+        print ("\nUsage: %s -c <channel_name> -p <channel_password> -o <pin_number>  { -o <pin_number> }   \n" % (os.path.basename(sys.argv[0])))
         print ("       channel_name ::= string")
         print ("               fully qualified channel name\n")
         print ("       channel_password ::= string")
         print ("               channel access password set by the channel owner\n")
         print ("       pin_number ::= int ")
         print ("               Number of the pin on Raspberry Pi port P1 which will be used")
-        print ("               as input. More than one pin can be specified\n")
+        print ("               as output. More than one pin can be specified\n")
         sys.exit(2)
     
     for opt,arg in opts:
@@ -193,7 +194,7 @@ def main():
             channel_name = arg            
         elif opt == "-p":
             channel_password = arg
-        elif opt == "-i":
+        elif opt == "-o":
             try:
                 pin_no = int(arg)
             except:

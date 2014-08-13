@@ -16,3 +16,12 @@ URI_SWITCH_GETSTATE       = "com.followit24.service.switch.GetState"
 URI_SWITCH_CURSTATE       = "com.followit24.service.switch.CurState"
 URI_SWITCH_EV_SWITCHON       = "com.followit24.service.switch.SwitchOn"
 URI_SWITCH_EV_SWITCHOFF       = "com.followit24.service.switch.SwitchOff"
+
+'''Light service'''
+URI_LIGHT                 ="com.followit24.service.light"
+URI_LIGHT_CMD_ON          ="com.followit24.service.light.On"
+URI_LIGHT_CMD_OFF          ="com.followit24.service.light.Off"
+URI_LIGHT_CMD_TOGGLE       ="com.followit24.service.light.Toggle"
+URI_LIGHT_CMD_GETSTATE       ="com.followit24.service.light.GetState"
+URI_LIGHT_RSP_CURSTATE       ="com.followit24.service.light.CurState"
+
