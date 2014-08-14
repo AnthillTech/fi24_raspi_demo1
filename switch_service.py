@@ -8,7 +8,6 @@ it creates one or more virtual devices, each monitoring the state of a single GP
 @license: GPL
 @version: 0.2
 @note: Early beta version
-@todo: remove excessive debug prints
 '''
 
 import sys
