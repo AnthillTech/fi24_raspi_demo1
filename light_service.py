@@ -17,11 +17,7 @@ import getopt
 from mewa.client import Connection
 import time
 import threading
-
 from globalids import *
-
-
-
 
 try:
     import RPi.GPIO as GPIO
@@ -29,22 +25,14 @@ try:
 except RuntimeError:
     print("Error importing RPi.GPIO!  This is probably because you need superuser privileges.  You can achieve this by using 'sudo' to run your script")
 
-
-
 DEVICE_NAME_PREFIX = "RasPi_Light-"
 '''Name, which the device uses to connect to the channel'''
-
 g_PinsToControl = []
 '''List of pin numbers of RasPi's port P1 to control'''
-
-
 g_MyDevices = []
-
-
+'''List of devices created'''
 
 class SwitchDevice(threading.Thread):
-    
-   
     mPinNo = -1
     '''Stores the number of RasPi's GPIO pin to watch'''
     mDeviceName = "" 
@@ -58,47 +46,27 @@ class SwitchDevice(threading.Thread):
    
     def __init__(self, device_name, pin_no, fq_channel_name, channel_pwd):
         super(SwitchDevice,self).__init__()
-
         self.mPinNo = pin_no
         self.mDeviceName = device_name
         self.mChannelPwd = channel_pwd
         self.mChannelName = fq_channel_name
-        
-        #
         # Set up the RasPi inputs
-        #        
-        #GPIO.cleanup(pin_no)
+        GPIO.setwarnings(False) 
         GPIO.setup(pin_no, GPIO.OUT) 
-        
-        #
         # Instantiate connection object
-        #
         self.mConnection = Connection("ws://channels.followit24.com/ws")
-        #
         # Set-up callback functions
-        #
         self.mConnection.onConnected = self.onConnected
-        self.mConnection.onDeviceJoinedChannel = self.onDeviceJoined
-        self.mConnection.onDeviceLeftChannel = self.onDeviceLeftChannel
-        self.mConnection.onDevicesEvent = self.onDevicesEvent
         self.mConnection.onError = self.onError
         self.mConnection.onEvent = self.onEvent
         self.mConnection.onMessage = self.onMessage
-        #
         # Open connection to channel server
-        #
-        
         self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd)
-
-   
-   
     
     def run(self):
-        print "%s started - using pin #%s \n" % (self.mDeviceName,self.mPinNo)
-        
+        print "Started Device %s - controlling pin #%s \n" % (self.mDeviceName,self.mPinNo)
         while True:
             time.sleep(1)
-        
         
     def getDeviceName(self):
         return self.mDeviceName
@@ -106,20 +74,8 @@ class SwitchDevice(threading.Thread):
     def getServiceTypes(self):
         return [URI_DISCOVERY,URI_LIGHT]
     
-    '''API channel callbacks'''
-    
     def onConnected (self):
-        print "%s.onConnected" % (self.getDeviceName())
-        
-        
-    def onDeviceJoined (self, dev_name):
-        print "%s.onDeviceJoined: %s" % (self.getDeviceName(),dev_name)
-    
-    def onDeviceLeftChannel (self, dev_name):
-        print "%s.onDeviceLeftChannel: %s" % (self.getDeviceName(),dev_name)
-    
-    def onDevicesEvent (self, devices_list):
-        print "%s.onDevicesEvent: %s" % (self.getDeviceName(),devices_list)
+        print "%s connected to channel successfully" % (self.getDeviceName())
     
     def onError (self, reason):
         print "%s.onError: %s" % (self.getDeviceName(), reason)
@@ -128,54 +84,34 @@ class SwitchDevice(threading.Thread):
         self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd)
         
     def onEvent (self, from_device, eventId, params):
-        print "%s.onEvent: from=%s, msgId=%s" % (self.getDeviceName(), from_device, eventId)
+        # catch the switch event and toggle the state of the GPIO pin
+        print "Received event from %s: %s" % (from_device, eventId)
         if eventId == URI_SWITCH_EV_SWITCHON:
             GPIO.output(self.mPinNo, not GPIO.input(self.mPinNo))
-    
         
     def onMessage (self, from_device, msgId, params):
-        print "%s.onMessage: from=%s, msgId=%s" % (self.getDeviceName(), from_device, msgId)
         try:
-        
             if  msgId == URI_DISCOVERY_GETSERVICES:
-            
-                print "Sending: %s, %s, %s" % (from_device,URI_DISCOVERY_SERVICELIST,self.getServiceTypes()) 
                 self.mConnection.sendMessage(from_device,URI_DISCOVERY_SERVICELIST,self.getServiceTypes())
-  
-            
             elif  msgId == URI_LIGHT_CMD_GETSTATE:
                 if GPIO.input(self.mPinNo):
                     curstate="on"
                 else:
                     curstate="off"
-                
-                print "Sending: %s, %s, %s" % (from_device,URI_LIGHT_RSP_CURSTATE,{"state":curstate}) 
                 self.mConnection.sendMessage(from_device,URI_LIGHT_RSP_CURSTATE,{"state":curstate})
-            
             elif  msgId == URI_LIGHT_CMD_ON:
                 GPIO.output(self.mPinNo,1)
-            
             elif  msgId == URI_LIGHT_CMD_OFF:
                 GPIO.output(self.mPinNo,0)
-
             elif  msgId == URI_LIGHT_CMD_TOGGLE:
                 GPIO.output(self.mPinNo,GPIO.input(self.mPinNo))
-
-            
         except Exception, e:
             print "Exception", e
-    
 
 def main():
-       
-       
-    channel_name = ''
-    channel_password = ''
-    
-
-    
+    channel_name = ""
+    channel_password = ""
     try:
-        
         opts,args = getopt.getopt(sys.argv[1:],"c:p:o:")
         
     except getopt.GetoptError:
@@ -188,7 +124,7 @@ def main():
         print ("               Number of the pin on Raspberry Pi port P1 which will be used")
         print ("               as output. More than one pin can be specified\n")
         sys.exit(2)
-    
+    #read command line arguments
     for opt,arg in opts:
         if opt == '-c':
             channel_name = arg            
@@ -201,16 +137,13 @@ def main():
                 print "pin number must be an integer"
                 exit (2)
             g_PinsToControl.append(pin_no)
-                
-                
-    
-    #
-    # Start a few switch devices, each monitoring one input on RasPi 
-    # 
+
+    # Instantiate device objects  
     for i in g_PinsToControl:
         devname = "%s%s" % (DEVICE_NAME_PREFIX,i)
         sthread = SwitchDevice(devname, i, channel_name, channel_password)
         sthread.start()
+        g_MyDevices.append(sthread)
           
 
     
