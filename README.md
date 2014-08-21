@@ -25,7 +25,22 @@ Usage: $ sudo python light_switch_service.py { -i <pin_number> } { -o <pin_numbe
                of each type, but at least one pin number must be given (input or output) 
 ```
 
-NOTE: the script must be run with root privileges (sudo) to be able to access GPIO
+
+
+**Examples:**
+
+The following command will start the service using pin #15 as the output to which the light is connected and pin #16 as input where switch is connected. 
+The communication will go through the channel whose fully qualified name is johnsmith.myhome where the access password set by the owner is jspwd
+
+`$sudo python light_switch_service -o 15 -i 16 johnsmith.myhome jspwd`
+
+The following command will connect to the same channel as above, but this time, both pin #15 and pin #16 will be configured as light outputs. 
+They will independently listen to switch events coming through the channel and toggle their state in response.
+
+`$sudo python light_switch_service -o 15 -o 16 johnsmith.myhome jspwd`
+
+
+NOTE: On Raspberry Pi the scripts must be run with root privileges (sudo) to be able to access GPIO
 
 
 
