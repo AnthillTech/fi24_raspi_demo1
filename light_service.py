@@ -25,14 +25,16 @@ try:
 except RuntimeError:
     print("Error importing RPi.GPIO!  This is probably because you need superuser privileges.  You can achieve this by using 'sudo' to run your script")
 
-DEVICE_NAME_PREFIX = "RasPi_Light-"
+LIGHT_DEVICE_NAME_PREFIX = "RasPi_Light-"
 '''Name, which the device uses to connect to the channel'''
 g_PinsToControl = []
 '''List of pin numbers of RasPi's port P1 to control'''
 g_MyDevices = []
 '''List of devices created'''
 
-class SwitchDevice(threading.Thread):
+
+
+class LightDevice(threading.Thread):
     mPinNo = -1
     '''Stores the number of RasPi's GPIO pin to watch'''
     mDeviceName = "" 
@@ -45,7 +47,7 @@ class SwitchDevice(threading.Thread):
     '''Channel name'''
    
     def __init__(self, device_name, pin_no, fq_channel_name, channel_pwd):
-        super(SwitchDevice,self).__init__()
+        super(LightDevice,self).__init__()
         self.mPinNo = pin_no
         self.mDeviceName = device_name
         self.mChannelPwd = channel_pwd
@@ -140,8 +142,8 @@ def main():
 
     # Instantiate device objects  
     for i in g_PinsToControl:
-        devname = "%s%s" % (DEVICE_NAME_PREFIX,i)
-        sthread = SwitchDevice(devname, i, channel_name, channel_password)
+        devname = "%s%s" % (LIGHT_DEVICE_NAME_PREFIX,i)
+        sthread = LightDevice(devname, i, channel_name, channel_password)
         sthread.start()
         g_MyDevices.append(sthread)
           
