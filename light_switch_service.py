@@ -68,7 +68,7 @@ class LightDevice(threading.Thread):
         self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd)
     
     def run(self):
-        print "Started Device %s - controlling pin %s \n" % (self.mDeviceName,self.mPinNo)
+        print "%s started, controlling pin #%s" % (self.mDeviceName,self.mPinNo)
         while True:
             time.sleep(1)
         
@@ -79,7 +79,7 @@ class LightDevice(threading.Thread):
         return [URI_DISCOVERY,URI_LIGHT]
     
     def onConnected (self):
-        print "%s connected to channel successfully" % (self.getDeviceName())
+        print "%s connected to channel %s successfully" % (self.getDeviceName(),self.mChannelName)
     
     def onError (self, reason):
         print "%s.onError: %s" % (self.getDeviceName(), reason)
@@ -87,11 +87,12 @@ class LightDevice(threading.Thread):
         time.sleep(5)
         self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd)
         
-    def onEvent (self, from_device, eventId, params):
-        # catch the switch event and toggle the state of the GPIO pin
-        print "Received event from %s: %s" % (from_device, eventId)
+    def onEvent (self, timestamp, from_device, eventId, params):
+        #catch the switch event and toggle the state of the GPIO pin
+        #print "%s.onEvent: %s (%s): %s" % (self.mDeviceName,from_device, timestamp, eventId)
         if eventId == URI_SWITCH_EV_SWITCHON:
             GPIO.output(self.mPinNo, not GPIO.input(self.mPinNo))
+      
         
     def onMessage (self, from_device, msgId, params):
         
@@ -109,9 +110,9 @@ class LightDevice(threading.Thread):
             elif  msgId == URI_LIGHT_CMD_OFF:
                 GPIO.output(self.mPinNo,0)
             elif  msgId == URI_LIGHT_CMD_TOGGLE:
-                GPIO.output(self.mPinNo,GPIO.input(self.mPinNo))
+                GPIO.output(self.mPinNo,not GPIO.input(self.mPinNo))
         except Exception, e:
-            print "Exception", e
+            print "Exception in  %s.onMessage: %s" %(self.getDeviceName(), e)
 
 class SwitchDevice(threading.Thread):
     mPinNo = -1
@@ -141,12 +142,11 @@ class SwitchDevice(threading.Thread):
         self.mConnection.onConnected = self.onConnected
         self.mConnection.onError = self.onError
         self.mConnection.onMessage = self.onMessage
-        
         # Open connection to channel server
         self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd)
     
     def run(self):
-        print "Started device %s, watching pin %s \n" % (self.mDeviceName,self.mPinNo)
+        print "%s started, monitoring pin #%s" % (self.mDeviceName,self.mPinNo)
         while True:
             GPIO.wait_for_edge(self.mPinNo, GPIO.BOTH)
             time.sleep(0.025)
@@ -164,13 +164,15 @@ class SwitchDevice(threading.Thread):
         return [URI_DISCOVERY,URI_SWITCH]
 
     def onConnected (self):
-        print "%s connected to channel successfully" % (self.getDeviceName())
+        print "%s connected to channel %s successfully" % (self.getDeviceName(),self.mChannelName)
 
     def onError (self, reason):
         print "%s.onError: %s" % (self.getDeviceName(), reason)
         print "Restarting connection in 5 seconds"
         time.sleep(5)
         self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd)
+
+    
         
     def onMessage (self, from_device, msgId, params):
         # Intercept calls to mandatory service com.followit24.service.discovery  
@@ -188,7 +190,7 @@ class SwitchDevice(threading.Thread):
                     curstate="off"
                 self.mConnection.sendMessage(from_device,URI_SWITCH_CURSTATE,{"state":curstate})
             except Exception, e:
-                print "Exception", e
+                print "Exception in  %s.onMessage: %s" %(self.getDeviceName(), e)
 
 def usage():
     print ("\nUsage: python %s { -i <pin_number> } { -o <pin_number> } <channel_name> <channel_password>  \n" % (os.path.basename(sys.argv[0])))
@@ -240,6 +242,14 @@ def main():
         usage ()
         sys.exit (2)
     
+
+    # Instantiate light device objects  
+    for i in g_PinsToControl:
+        devname = "%s%s" % (LIGHT_DEVICE_NAME_PREFIX,i)
+        sthread = LightDevice(devname, i, channel_name, channel_password)
+        sthread.start()
+        g_MyDevices.append(sthread)
+
     
     # Instantiate switch device objects 
     for i in g_PinsToWatch:
@@ -248,12 +258,6 @@ def main():
         sthread.start()
         g_MyDevices.append(sthread)
         
-    # Instantiate light device objects  
-    for i in g_PinsToControl:
-        devname = "%s%s" % (LIGHT_DEVICE_NAME_PREFIX,i)
-        sthread = LightDevice(devname, i, channel_name, channel_password)
-        sthread.start()
-        g_MyDevices.append(sthread)
       
 
     
