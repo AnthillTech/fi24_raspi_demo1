@@ -5,23 +5,23 @@ devices
 '''
 
 '''Discovery service'''
-URI_DISCOVERY             = "com.followit24.service.discovery"
-URI_DISCOVERY_GETSERVICES = "com.followit24.service.discovery.GetServices"
-URI_DISCOVERY_SERVICELIST = "com.followit24.service.discovery.ServiceList"
+URI_DISCOVERY             = "org.fi24.discovery"
+URI_DISCOVERY_GETSERVICES = "org.fi24.discovery.GetServices"
+URI_DISCOVERY_SERVICELIST = "org.fi24.discovery.ServiceList"
 
 
 '''Switch service'''
-URI_SWITCH                = "com.followit24.service.switch"
-URI_SWITCH_GETSTATE       = "com.followit24.service.switch.GetState"
-URI_SWITCH_CURSTATE       = "com.followit24.service.switch.CurrentState"
-URI_SWITCH_EV_SWITCHON       = "com.followit24.service.switch.SwitchedOn"
-URI_SWITCH_EV_SWITCHOFF       = "com.followit24.service.switch.SwitchedOff"
+URI_SWITCH                = "org.fi24.switch"
+URI_SWITCH_GETSTATE       = "org.fi24.switch.GetState"
+URI_SWITCH_CURSTATE       = "org.fi24.switch.CurrentState"
+URI_SWITCH_EV_SWITCHON       = "org.fi24.switch.SwitchedOn"
+URI_SWITCH_EV_SWITCHOFF       = "org.fi24.switch.SwitchedOff"
 
 '''Light service'''
-URI_LIGHT                 ="com.followit24.service.light"
-URI_LIGHT_CMD_ON          ="com.followit24.service.light.On"
-URI_LIGHT_CMD_OFF          ="com.followit24.service.light.Off"
-URI_LIGHT_CMD_TOGGLE       ="com.followit24.service.light.Toggle"
-URI_LIGHT_CMD_GETSTATE       ="com.followit24.service.light.GetState"
-URI_LIGHT_RSP_CURSTATE       ="com.followit24.service.light.CurrentState"
+URI_LIGHT                 ="org.fi24.light"
+URI_LIGHT_CMD_ON          ="org.fi24.light.TurnOn"
+URI_LIGHT_CMD_OFF          ="org.fi24.light.TurnOff"
+URI_LIGHT_CMD_TOGGLE       ="org.fi24.light.Toggle"
+URI_LIGHT_EVT_TURNEDON       ="org.fi24.light.TurnedOn"
+URI_LIGHT_EVT_TURNEDOFF       ="org.fi24.light.TurnedOff"
 

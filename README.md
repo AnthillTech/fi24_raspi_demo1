@@ -40,7 +40,7 @@ They will independently listen to switch events coming through the channel and t
 `$sudo python light_switch_service -o 15 -o 16 johnsmith.myhome jspwd`
 
 
-NOTE: On Raspberry Pi the scripts must be run with root privileges (sudo) to be able to access GPIO
+NOTE: On Raspberry Pi the scripts must be run with root privileges (sudo) to be able to access GPIO.
 
 
 

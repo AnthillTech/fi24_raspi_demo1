@@ -88,29 +88,32 @@ class LightDevice(threading.Thread):
         self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd)
         
     def onEvent (self, timestamp, from_device, eventId, params):
-        #catch the switch event and toggle the state of the GPIO pin
-        #print "%s.onEvent: %s (%s): %s" % (self.mDeviceName,from_device, timestamp, eventId)
+        '''
+        Catch the switch event and toggle the state of the output GPIO pin
+        This is just for demonstration purposes. Normally this function would be performed by a control 
+        application independent of the light or switch devices, most likely running as a server-app'''
         if eventId == URI_SWITCH_EV_SWITCHON:
-            GPIO.output(self.mPinNo, not GPIO.input(self.mPinNo))
-      
+            self.mConnection.sendMessage(self.getDeviceName(), URI_LIGHT_CMD_TOGGLE, "")
+     
         
-    def onMessage (self, from_device, msgId, params):
+    def onMessage (self, timestamp,from_device, msgId, params):
         
         try:
             if  msgId == URI_DISCOVERY_GETSERVICES:
                 self.mConnection.sendMessage(from_device,URI_DISCOVERY_SERVICELIST,self.getServiceTypes())
-            elif  msgId == URI_LIGHT_CMD_GETSTATE:
-                if GPIO.input(self.mPinNo):
-                    curstate="on"
-                else:
-                    curstate="off"
-                self.mConnection.sendMessage(from_device,URI_LIGHT_RSP_CURSTATE,{"state":curstate})
             elif  msgId == URI_LIGHT_CMD_ON:
                 GPIO.output(self.mPinNo,1)
+                self.mConnection.sendEvent(URI_LIGHT_EVT_TURNEDON, "")
             elif  msgId == URI_LIGHT_CMD_OFF:
                 GPIO.output(self.mPinNo,0)
+                self.mConnection.sendEvent(URI_LIGHT_EVT_TURNEDOFF, "")
             elif  msgId == URI_LIGHT_CMD_TOGGLE:
                 GPIO.output(self.mPinNo,not GPIO.input(self.mPinNo))
+                if GPIO.input(self.mPinNo) == True :
+                    self.mConnection.sendEvent(URI_LIGHT_EVT_TURNEDON, "")
+                else:
+                    self.mConnection.sendEvent(URI_LIGHT_EVT_TURNEDOFF, "")
+                    
         except Exception, e:
             print "Exception in  %s.onMessage: %s" %(self.getDeviceName(), e)
 
