@@ -6,9 +6,9 @@ Created on Aug 21, 2014
           of a single GPIO pin in Raspberry Pi. 
 @author: Piotr Orzechowski
 @copyright: Anthill Technology
-@license: GPL
-@version: 0.1
-@note: Early beta version
+@license: BSD
+@version: 0.9
+@note: Beta version
 '''
 
 import sys
