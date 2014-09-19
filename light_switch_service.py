@@ -48,16 +48,20 @@ URI_LIGHT_EVT_TURNEDOFF       ="org.fi24.light.TurnedOff"
 
 
 
-LIGHT_DEVICE_NAME_PREFIX = "RasPi_Light-"
+SWITCH_DEVICE_NAME_PREFIX = "-switch-"
 '''Name, which the device uses to connect to the channel'''
+LIGHT_DEVICE_NAME_PREFIX = "-light-"
+'''Name, which the device uses to connect to the channel'''
+
+
 g_PinsToControl = []
 '''List of pin numbers of RasPi's port P1 to control'''
-SWITCH_DEVICE_NAME_PREFIX = "RasPi_Switch-"
-'''Name, which the device uses to connect to the channel'''
 g_PinsToWatch = []
 '''List of pin numbers of RasPi's port P1 to watch'''
 g_MyDevices = []
 '''List of devices created'''
+g_RasPi_Name_Prefix = "RasPi"
+'''Default name of the Raspberry Pi device'''
 
 class LightDevice(threading.Thread):
     mPinNo = -1
@@ -108,6 +112,8 @@ class LightDevice(threading.Thread):
         print "%s.onError: %s" % (self.getDeviceName(), reason)
         print "Restarting connection in 5 seconds"
         time.sleep(5)
+        self.mConnection.close()
+        self.mConnection = Connection("ws://channels.followit24.com/ws")
         self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd)
         
     def onEvent (self, timestamp, from_device, eventId, params):
@@ -200,7 +206,7 @@ class SwitchDevice(threading.Thread):
 
     
         
-    def onMessage (self, from_device, msgId, params):
+    def onMessage (self, timestamp, from_device, msgId, params):
         # Intercept calls to mandatory service com.followit24.service.discovery  
         if  msgId == URI_DISCOVERY_GETSERVICES:
             try:
@@ -219,7 +225,7 @@ class SwitchDevice(threading.Thread):
                 print "Exception in  %s.onMessage: %s" %(self.getDeviceName(), e)
 
 def usage():
-    print ("\nUsage: python %s { -i <pin_number> } { -o <pin_number> } <channel_name> <channel_password>  \n" % (os.path.basename(sys.argv[0])))
+    print ("\nUsage: python %s { -n <name_prefix> } { -i <pin_number> } { -o <pin_number> } <channel_name> <channel_password>  \n" % (os.path.basename(sys.argv[0])))
     print ("       channel_name ::= string")
     print ("               fully qualified channel name\n")
     print ("       channel_password ::= string")
@@ -227,13 +233,22 @@ def usage():
     print ("       pin_number ::= int ")
     print ("               Number of the pin on Raspberry Pi port P1 which will be used")
     print ("               as input (-i) or output (-o). More than one pin can be specified ")
-    print ("               of each type, but at least one pin number must be given (input or output) ")
+    print ("               of each type, but at least one pin number must be given (input or output) \n")
+    print ("       name_prefix ::= string ")
+    print ("               Raspberry device name prefix")
+    print ("               If not set, defaults to 'RasPi'")
+    
 
 def main():
+    global g_MyDevices
+    global g_PinsToControl
+    global g_PinsToWatch
+    global g_RasPi_Name_Prefix
+    
     channel_name = ""
     channel_password = ""
     try:
-        opts,args = getopt.getopt(sys.argv[1:],"c:p:i:o:")
+        opts,args = getopt.getopt(sys.argv[1:],"i:o:n:")
     except :
         usage()
         sys.exit(2)
@@ -262,6 +277,13 @@ def main():
                 usage()
                 exit (2)
             g_PinsToControl.append(pin_no)
+        elif opt == "-n":
+            try:
+                g_RasPi_Name_Prefix = arg
+            except:
+                usage()
+                exit (2)
+               
             
     if len (g_PinsToControl) == 0 and len(g_PinsToWatch) == 0:
         print "\nerror: at least one input or output pin must be defined"
@@ -271,7 +293,7 @@ def main():
 
     # Instantiate light device objects  
     for i in g_PinsToControl:
-        devname = "%s%s" % (LIGHT_DEVICE_NAME_PREFIX,i)
+        devname = "%s%s%s" % (g_RasPi_Name_Prefix,LIGHT_DEVICE_NAME_PREFIX,i)
         sthread = LightDevice(devname, i, channel_name, channel_password)
         sthread.start()
         g_MyDevices.append(sthread)
@@ -279,7 +301,7 @@ def main():
     
     # Instantiate switch device objects 
     for i in g_PinsToWatch:
-        devname = "%s%s" % (SWITCH_DEVICE_NAME_PREFIX,i)
+        devname = "%s%s%s" % (g_RasPi_Name_Prefix,SWITCH_DEVICE_NAME_PREFIX,i)
         sthread = SwitchDevice(devname, i, channel_name, channel_password)
         sthread.start()
         g_MyDevices.append(sthread)
