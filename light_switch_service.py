@@ -92,7 +92,7 @@ class LightDevice(threading.Thread):
         self.mConnection.onEvent = self.onEvent
         self.mConnection.onMessage = self.onMessage
         # Open connection to channel server
-        self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd)
+        self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd,["",])
     
     def run(self):
         print "%s started, controlling pin #%s" % (self.mDeviceName,self.mPinNo)
@@ -114,7 +114,7 @@ class LightDevice(threading.Thread):
         time.sleep(5)
         self.mConnection.close()
         self.mConnection = Connection("ws://channels.followit24.com/ws")
-        self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd)
+        self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd,["",])
         
     def onEvent (self, timestamp, from_device, eventId, params):
         '''
@@ -175,7 +175,7 @@ class SwitchDevice(threading.Thread):
         self.mConnection.onError = self.onError
         self.mConnection.onMessage = self.onMessage
         # Open connection to channel server
-        self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd)
+        self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd,["",])
     
     def run(self):
         print "%s started, monitoring pin #%s" % (self.mDeviceName,self.mPinNo)
@@ -202,7 +202,7 @@ class SwitchDevice(threading.Thread):
         print "%s.onError: %s" % (self.getDeviceName(), reason)
         print "Restarting connection in 5 seconds"
         time.sleep(5)
-        self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd)
+        self.mConnection.connect(self.mChannelName,self.mDeviceName,self.mChannelPwd,["",])
 
     
         
