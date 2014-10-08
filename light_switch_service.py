@@ -7,7 +7,7 @@ Created on Aug 21, 2014
 @author: Piotr Orzechowski
 @copyright: Anthill Technology
 @license: BSD
-@version: 0.9
+@version: 0.95  (compatible with channel API version 0.7)
 @note: Beta version
 '''
 
